@@ -1,5 +1,12 @@
-const store = require('./store.js');
+require('dotenv').config();
+var moment = require('moment');
+var store = require('./store.js');
 
-var data = new store.Data(store.Ticket.BTCUSDT);
+const TICKET = 'BNBBTC';
 
-data.get(store.Interval.D);
+store.candles(
+  TICKET, '1m',
+  moment('2017-01-01'), moment(),
+  function onTick(tick) {
+    console.log(moment(Number(tick[0])).format('YYYY-MM-DD HH:MM'), tick[1]);
+  });

@@ -1,10 +1,13 @@
-var moment = require('moment'),
-    binance = require('node-binance-api'),
-    fs = require('fs');
-require('dotenv').config();
+var moment = require('moment');
+var stock = require('node-binance-api');
+var fs = require('fs');
+var csv = require("fast-csv");
 
+const HEADERS = ['time', 'open', 'high', 'low', 'close', 'volume', 'closeTime', 'assetVolume', 'trades', 'buyBaseVolume', 'buyAssetVolume', 'ignored'];
+const INTERVALS = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d','3d','1w','1M'];
 
-binance.options({
+// data source options
+stock.options({
   APIKEY: process.env.BINANCE_APIKEY,
   APISECRET: process.env.BINANCE_APISECRET,
   useServerTime: true, // If you get timestamp errors, synchronize to server time at startup
@@ -13,38 +16,39 @@ binance.options({
 
 
 
-// Intervals: 1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M
-var Interval = Object.freeze({D:"1d", M:"1M"});
-var Ticket = Object.freeze({BTCUSDT:"BNBBTC"});
-
-var Data = class Data {
-
-  constructor(ticket) {
-    this.ticket = ticket;
+// Get candles.
+//
+function candles(symbol, interval, startMoment, endMoment, callback) {
+  var path = fileName(symbol, startMoment, interval)
+  if (fs.existsSync(path)) {
+    csv
+      .fromPath(path)
+      .on("data", tick => callback(tick) );
+      //.on("end", () => { console.log("done"); });
   }
+  else {
+    stock.candlesticks(symbol, interval, function onTicks(error, ticks, symbol) {
+      if (error)
+        throw error;
+      console.log(symbol + ' receive ' + ticks.length + ' ticks');
+      csv.writeToPath(path, ticks, {headers:HEADERS});
+      for (var tick in ticks)
+        callback(tick);
+    }, {
+      //limit: 10,
+      startTime: startMoment.valueOf(),
+      endTime: endMoment.valueOf()
+    });
+  }
+}
 
-  get(interval) {
-    var fileName = './data/' + this.ticket + '_' + interval + '.csv';
-    if (fs.existsSync(fileName)) {
-      
-    }
-    else {
-      binance.candlesticks(this.ticket, interval, (error, ticks, symbol) => {
-        console.log(this.ticket + ' receive ' + ticks.length + ' ticks');
-//for (let tick of ticks)
-//let [time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored] = tick;
-        var data = ticks.join("\n");
-        fs.writeFile(fileName, data, err => {
-          if (err) throw err;
-          console.log(fileName + ' saved');
-        });
+// Get file name with data
+//
+function fileName(symbol, date, interval) {
+  return './data/' + symbol + '/' + date.utc().format('YYYY-MM') + '_' + interval + '.csv';
+}
 
-      }, {limit: 10, endTime: 1514764800000});
-    }
-  } // get
-
-} // class Data
-
-exports.Interval = Interval;
-exports.Ticket = Ticket;
-exports.Data = Data;
+// module exports
+//
+exports.INTERVALS = INTERVALS;
+exports.candles = candles;
