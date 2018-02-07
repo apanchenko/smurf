@@ -19,7 +19,9 @@ class Interval(Enum):
     _3d = '3d'
     _1w = '1w'
 
-    def minutes_per_candle(self):
+    # Minutes per interval
+    @property
+    def minutes(self):
         return {
             "m": 1,
             "h": 60,
@@ -27,5 +29,7 @@ class Interval(Enum):
             "w": 7 * 24 * 60,
         }.get(self.value[-1]) * int(self.value[:-1])
 
-    def ms_per_candle(self):
-        return self.minutes_per_candle() * 60 * 1000
+    # Seconds per interval
+    @property
+    def seconds(self):
+        return self.minutes * 60
