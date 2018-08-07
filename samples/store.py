@@ -1,4 +1,3 @@
-import csv
 import os
 from datetime import date, datetime
 from interval import Interval
