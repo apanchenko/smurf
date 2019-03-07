@@ -1,4 +1,4 @@
-# About this project
+# Purpose
 
 To learn python, machine learning and adjacent topics.
 
@@ -24,3 +24,6 @@ pip install -r requirements.txt
 ```
 
 ## 2. [titanic](https://www.kaggle.com/c/titanic)
+
+[kaggle-api](https://github.com/Kaggle/kaggle-api)
+TODO: make getdata in python
