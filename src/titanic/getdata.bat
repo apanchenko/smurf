@@ -1,1 +1,0 @@
-kaggle competitions download -p data/titanic titanic
