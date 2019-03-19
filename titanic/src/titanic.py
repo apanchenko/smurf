@@ -6,6 +6,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from subprocess import check_output
 
+from subprocess import check_output
+print(check_output(["ls", "../input"]).decode("utf8"))
+
 # fill NaNs with mean value
 def fillna_mean(feature: pd.Series):
     mean = feature.mean()
@@ -72,6 +75,8 @@ X = train.loc[:, features]
 Y = train.loc[:, 'Survived']
 XTest = test.loc[:, features]
 XTrain, XValid, YTrain, YValid = train_test_split(X, Y, test_size=0.2, random_state=40)
+
+print(train.describe(include = 'all'))
 
 # Fit logistic regression using scikit
 LR = LogisticRegression(C=1000, solver='lbfgs', max_iter=1000)
