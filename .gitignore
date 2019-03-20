@@ -4,3 +4,4 @@ data
 logs
 .venv
 */input
+**/.ipynb_checkpoints

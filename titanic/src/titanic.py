@@ -3,7 +3,7 @@ import pandas as pd
 import re
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
+from sklearn import linear_model# import LogisticRegression
 from subprocess import check_output
 
 from subprocess import check_output
@@ -52,6 +52,10 @@ def prepare_data(name: str) -> pd.Series:
     print_feature(df, 'Title')
     return df
 
+train = prepare_data('train')
+test = prepare_data('test')
+
+# Preprocess data
 def encode_labels(label: str):
     le = LabelEncoder()
     train[label].fillna('', inplace=True)
@@ -60,10 +64,6 @@ def encode_labels(label: str):
     train.loc[:, label] = le.transform(train[label])
     test.loc[:, label] = le.transform(test[label])
 
-train = prepare_data('train')
-test = prepare_data('test')
-
-# Preprocess data
 encode_labels('Sex')
 encode_labels('Embarked')
 encode_labels('Title')
@@ -76,10 +76,9 @@ Y = train.loc[:, 'Survived']
 XTest = test.loc[:, features]
 XTrain, XValid, YTrain, YValid = train_test_split(X, Y, test_size=0.2, random_state=40)
 
-print(train.describe(include = 'all'))
 
 # Fit logistic regression using scikit
-LR = LogisticRegression(C=1000, solver='lbfgs', max_iter=1000)
+LR = linear_model.LogisticRegression(C=1000, solver='lbfgs', max_iter=1000)
 LR.fit(X=XTrain, y=YTrain)
 
 def accuracy(Y: np.array, yPred: np.array) -> float:
