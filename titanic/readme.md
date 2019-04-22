@@ -6,3 +6,6 @@
 - Узнай про mean target encoding и примени его.
 
 `F' = (mean(yₖ) K + global_mean(y) α) / (K + α)`
+
+GXBoost for GPU
+https://www.kaggle.com/c/porto-seguro-safe-driver-prediction/discussion/43067

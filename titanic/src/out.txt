@@ -1,2 +1,19 @@
      Train accuracy 0.8960674157303371
 Validation accuracy 0.9106145251396648
+
+     Train accuracy 0.8876404494382022
+Validation accuracy 0.9162011173184358
+
+
+# FARE
+mae 0.7861040831895415
+score 0.9993954908771248
+{'learning_rate': 1.2, 'max_depth': 2, 'n_estimators': 1000}
+
+# Age
+mae 7.39726418389417
+score 0.565284195075515
+{'learning_rate': 0.1, 'max_depth': 3, 'n_estimators': 100}
+
+# Survived score
+0.9842873176206509
