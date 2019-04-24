@@ -6,9 +6,21 @@ Validation accuracy 0.9162011173184358
 
 
 # FARE
-mae 0.7861040831895415
-score 0.9993954908771248
-{'learning_rate': 1.2, 'max_depth': 2, 'n_estimators': 1000}
+score 0.839689376817816
+params {'learning_rate': 0.4, 'max_depth': 3, 'n_estimators': 170}
+
+	feature 	importance
+0 	Pclass 	0.733564
+5 	family_size 	0.128422
+3 	title_cat 	0.066585
+4 	ticket_cat 	0.061050
+1 	SibSp 	0.006512
+2 	sex_cat 	0.003867
+
+# EMBARKED
+score 0.946442234123948
+params {'learning_rate': 0.5, 'max_depth': 4, 'n_estimators': 500}
+
 
 # Age
 mae 7.39726418389417
