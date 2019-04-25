@@ -1,10 +1,9 @@
 # 04/2019 Anton Panchenko
 from sys import version
-import os
 import re
 import numpy as np
 import pandas as pd
-import seaborn as sns
+#import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
 from sklearn import model_selection
 from sklearn import linear_model
@@ -13,25 +12,26 @@ import xgboost as xgb
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-def print_count(df):
+def count(df):
     stat = pd.DataFrame([df.dtypes, df.count(), df.isna().sum()], index=['dtypes', 'values', 'nans'])
-    print(stat.sort_values(by=['values'], axis=1, ascending=False))
+    return stat.sort_values(by=['values'], axis=1, ascending=False)
 
 def print_value_counts(feature):
     df = pd.DataFrame([feature.value_counts()], index=[feature.name])
     df['nan'] = feature.isna().sum()
-    return df
+    print(df)
 
-def encode_cat(df:pd.DataFrame, label:str):
+def encode_cat(df, label:str):
     target = label.lower() + '_cat'
     if target in df:
         df.drop(columns=target, inplace=True)
     notna = df[label].notna()
     y = df[notna].loc[:, label]
     df.loc[notna, target] = LabelEncoder().fit_transform(y).astype('int32')
+    print('\nencode_cat ', label)
     print_value_counts(df[target])
 
-def infer(df:pd.DataFrame, params, features:np.array, target:str):
+def infer(df, params, features:np.array, target:str):
     # select training data and fit regressor
     train = df[df[target].notna()]
     x = train.loc[:, features]
@@ -39,8 +39,8 @@ def infer(df:pd.DataFrame, params, features:np.array, target:str):
     regressor = xgb.XGBRegressor(n_jobs=4)
     grid = model_selection.GridSearchCV(regressor, params, cv=5).fit(x, y)
     print('score', grid.best_score_)
-    print('params', grid.best_params_)  
-    regressor = grid.best_estimator_    
+    print('params', grid.best_params_)
+    regressor = grid.best_estimator_
     
     # predict missing target values
     na_mask = df[target].isna()
@@ -52,7 +52,7 @@ def infer(df:pd.DataFrame, params, features:np.array, target:str):
     new_feature = target + '_'
     df[new_feature] = df[target]
     df.loc[na_mask, new_feature] = y_predict
-    df[new_feature].plot.kde()
+    #df[new_feature].plot.kde()
 
     # return feature importance
     #feature_importance = pd.DataFrame({'feature':features, 'importance':regressor.feature_importances_})
@@ -66,8 +66,8 @@ def infer_cat(df, params, features, target:str):
     estimator = xgb.XGBClassifier(n_jobs=4)
     grid = model_selection.GridSearchCV(estimator, params, cv=3).fit(x, y)
     print('score', grid.best_score_)
-    print('params', grid.best_params_)  
-    estimator = grid.best_estimator_  
+    print('params', grid.best_params_)
+    estimator = grid.best_estimator_
     
     # predict missing target values 
     na = df[target].isna()
@@ -83,8 +83,6 @@ def infer_cat(df, params, features, target:str):
 
 
 def main():
-  print(os.listdir("../input"))
-
   # Load and merge datasets
   train = pd.read_csv('../input/train.csv')
   test = pd.read_csv('../input/test.csv')
@@ -92,7 +90,7 @@ def main():
   print('\nMeet data:\n', data.sample(5))
 
   # Look at types and incomplete features
-  print_count(data)
+  print('\nTypes and counts:\n', count(data))
   # Features to make categorical:
   #    - Name
   #    - Sex
@@ -103,6 +101,16 @@ def main():
   #    - Embarked
   #    - Age
   #    - Cabin
+
+  # Extract Title from Name
+  # See english honorifics (https://en.wikipedia.org/wiki/English_honorifics) for reference.
+  data['title'] = data['Name'].str.extract(r', (.*?)\.', expand=False)
+  print_value_counts(data['title'])
+  data['title'].replace(['Mlle', 'Ms'], 'Miss', inplace=True)
+  data['title'].replace(['Mme', 'Lady', 'Countess', 'Dona', 'the Countess'], 'Mrs', inplace=True)
+  data['title'].replace(['Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer'], 'Mr', inplace=True)
+  print_value_counts(data['title'])
+  encode_cat(data, 'title')
 
   # Check tickets
   encode_cat(data, 'Ticket')
@@ -115,18 +123,6 @@ def main():
 
   # Encode Sex
   encode_cat(data, 'Sex')
-
-  # ## Extract Title from Name
-  data['title'] = data['Name'].str.extract(r', (.*?)\.', expand=False)
-
-  print_value_counts(data['title'])
-  # See [english honorifics](https://en.wikipedia.org/wiki/English_honorifics) for reference.
-  data['title'].replace(['Mlle', 'Ms'], 'Miss', inplace=True)
-  data['title'].replace(['Mme', 'Lady', 'Countess', 'Dona', 'the Countess'], 'Mrs', inplace=True)
-  data['title'].replace(['Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer'], 'Mr', inplace=True)
-  print_value_counts(data['title'])
-
-  encode_cat(data, 'title')
 
   ## Fix Fare
   params = {'max_depth': [2, 3, 4],
@@ -153,7 +149,7 @@ def main():
   # create a Kaggle submission
   sub = pd.DataFrame({'PassengerId': test['PassengerId'], 'Survived': data[na_mask].loc[:, 'Survived_']})
   sub.to_csv('submission.csv', index=False)
-  print('Thanks!!!')
+
 
 if __name__=='__main__':
   main()
