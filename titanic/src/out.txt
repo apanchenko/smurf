@@ -6,8 +6,8 @@ Validation accuracy 0.9162011173184358
 
 
 # FARE
-score 0.839689376817816
-params {'learning_rate': 0.4, 'max_depth': 3, 'n_estimators': 170}
+score 0.8489445091330081
+params {'learning_rate': 0.4, 'max_depth': 3, 'n_estimators': 150}
 
 	feature 	importance
 0 	Pclass 	0.733564
