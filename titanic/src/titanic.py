@@ -39,7 +39,7 @@ def infer(df, params, features:np.array, target:str):
     x = train.loc[:, features]
     y = train.loc[:, target]
     regressor = xgb.XGBRegressor(n_jobs=4)
-    grid = model_selection.GridSearchCV(regressor, params, cv=5).fit(x, y)
+    grid = model_selection.GridSearchCV(regressor, params, cv=5, iid=True).fit(x, y)
     print('score', grid.best_score_)
     print('best params', grid.best_params_)
     regressor = grid.best_estimator_
@@ -55,9 +55,10 @@ def infer(df, params, features:np.array, target:str):
     df.loc[na_mask, new_feature] = y_predict
     #df[new_feature].plot.kde()
 
-    # return feature importance
-    #feature_importance = pd.DataFrame({'feature':features, 'importance':regressor.feature_importances_})
-    #return feature_importance.sort_values(by='importance', ascending=False)
+    # show feature importance
+    feature_importance = pd.DataFrame({'feature':features, 'importance':regressor.feature_importances_})
+    print('Feature importance:')
+    print(feature_importance.sort_values(by='importance', ascending=False))
 
 def infer_cat(df, params, features, target:str):
     new_feature = target.lower() + '_'
@@ -83,6 +84,10 @@ def infer_cat(df, params, features, target:str):
     df[new_feature] = df[new_feature].astype('int64')
     print(value_counts(df[new_feature]))
 
+    # show feature importance
+    feature_importance = pd.DataFrame({'feature':features, 'importance':estimator.feature_importances_})
+    print('Feature importance:')
+    print(feature_importance.sort_values(by='importance', ascending=False))
 
 def main():
     # Load and merge datasets
@@ -130,18 +135,21 @@ def main():
     features = np.append(features, 'fare_')
     infer_cat(data, params, features, 'embarked_cat')
 
-    # Fix Age (best score 0.3576)
+    # Fix Age (best score 0.4230)
     features = np.append(features, 'embarked_cat_')
-    params = {'max_depth': [3, 4, 5],
-              'learning_rate': [0.3, 0.5, 0.7],
-              'n_estimators': [100, 300, 600]}
+    params = {'max_depth': [2, 3],
+              'learning_rate': [0.04, 0.05, 0.08],
+              'n_estimators': [90, 100, 120]}
     infer(data, params, features, 'Age')
 
-    # Finally predict Survived (best score 0.8260)
+    # Final glance at data
+    print('\nFinal data:\n', count(data))
+
+    # Finally predict Survived (best score 0.8350)
     features = np.append(features, 'age_')
     params = {'max_depth': [3, 4, 5],
-              'learning_rate': [0.3, 0.5, 0.7],
-              'n_estimators': [100, 300, 600]}
+              'learning_rate': [0.1, 0.3],
+              'n_estimators': [70, 100, 300]}
     infer_cat(data, params, features, 'Survived')
 
     # create a Kaggle submission
