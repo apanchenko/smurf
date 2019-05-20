@@ -5,3 +5,4 @@ logs
 .venv
 */input
 **/.ipynb_checkpoints
+titanic/src/submission.csv

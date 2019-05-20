@@ -1,25 +1,33 @@
 # 04/2019 Anton Panchenko
-from sys import version
-import re
+import sys
+print(' python', sys.version)
+
 import numpy as np
+print('  numpy', np.__version__)
+
 import pandas as pd
-#import seaborn as sns
-from sklearn.preprocessing import LabelEncoder
-from sklearn import model_selection
-from sklearn import linear_model
-from sklearn import metrics
+print(' pandas', pd.__version__)
+
+import sklearn as sl
+print('sklearn', sl.__version__)
+
 import xgboost as xgb
+print('xgboost', xgb.__version__)
+
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
+
 
 def count(df):
     stat = pd.DataFrame([df.dtypes, df.count(), df.isna().sum()], index=['dtypes', 'values', 'nans'])
     return stat.sort_values(by=['values'], axis=1, ascending=False)
 
+
 def value_counts(feature):
     df = pd.DataFrame([feature.value_counts()], index=[feature.name])
     df['nan'] = feature.isna().sum()
     return df
+
 
 def encode_cat(df, label:str):
     target = label.lower() + '_cat'
@@ -27,9 +35,10 @@ def encode_cat(df, label:str):
         df.drop(columns=target, inplace=True)
     notna = df[label].notna()
     y = df[notna].loc[:, label]
-    df.loc[notna, target] = LabelEncoder().fit_transform(y).astype('int32')
+    df.loc[notna, target] = sl.preprocessing.LabelEncoder().fit_transform(y).astype('int32')
     print('\nEncode categorical \'%s\':' % label)
     print(value_counts(df[target]))
+
 
 def infer(df, params, features:np.array, target:str):
     new_feature = target.lower() + '_'
@@ -39,7 +48,7 @@ def infer(df, params, features:np.array, target:str):
     x = train.loc[:, features]
     y = train.loc[:, target]
     regressor = xgb.XGBRegressor(n_jobs=4)
-    grid = model_selection.GridSearchCV(regressor, params, cv=5, iid=True).fit(x, y)
+    grid = sl.model_selection.GridSearchCV(regressor, params, cv=5, iid=True).fit(x, y)
     print('score', grid.best_score_)
     print('best params', grid.best_params_)
     regressor = grid.best_estimator_
@@ -60,6 +69,7 @@ def infer(df, params, features:np.array, target:str):
     print('Feature importance:')
     print(feature_importance.sort_values(by='importance', ascending=False))
 
+
 def infer_cat(df, params, features, target:str):
     new_feature = target.lower() + '_'
     print('\nInfer categorical %s(%s):' % (new_feature, features))  
@@ -68,7 +78,7 @@ def infer_cat(df, params, features, target:str):
     x = train.loc[:, features]
     y = train.loc[:, target]
     estimator = xgb.XGBClassifier(n_jobs=4)
-    grid = model_selection.GridSearchCV(estimator, params, cv=3).fit(x, y)
+    grid = sl.model_selection.GridSearchCV(estimator, params, cv=3).fit(x, y)
     print('score', grid.best_score_)
     print('params', grid.best_params_)
     estimator = grid.best_estimator_
@@ -88,6 +98,7 @@ def infer_cat(df, params, features, target:str):
     feature_importance = pd.DataFrame({'feature':features, 'importance':estimator.feature_importances_})
     print('Feature importance:')
     print(feature_importance.sort_values(by='importance', ascending=False))
+
 
 def main():
     # Load and merge datasets
@@ -156,6 +167,7 @@ def main():
     na_mask = data['Survived'].isna()
     sub = pd.DataFrame({'PassengerId': test['PassengerId'], 'Survived': data[na_mask].loc[:, 'survived_']})
     sub.to_csv('submission.csv', index=False)
+
 
 if __name__=='__main__':
     main()
