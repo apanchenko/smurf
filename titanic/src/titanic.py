@@ -4,10 +4,6 @@ import re
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn import linear_model# import LogisticRegression
-from subprocess import check_output
-
-from subprocess import check_output
-print(check_output(["ls", "../input"]).decode("utf8"))
 
 # fill NaNs with mean value
 def fillna_mean(feature: pd.Series):
@@ -91,4 +87,4 @@ print('Validation accuracy', accuracy(YValid, LR.predict(XValid)))
 # Predict for test set
 # Create a Kaggle submission
 sub = pd.DataFrame({'PassengerId': test['PassengerId'], 'Survived': LR.predict(XTest)})
-sub.to_csv('scikitLRExample.csv', index=False)
+sub.to_csv('submission.csv', index=False)

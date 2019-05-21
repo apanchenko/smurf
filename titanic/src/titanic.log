@@ -1,0 +1,48 @@
+train (891, 12)
+	FamilySize
+1	0.60
+2	0.18
+3	0.11
+4	0.03
+6	0.02
+5	0.02
+7	0.01
+11	0.01
+8	0.01
+
+	Alone
+1	0.60
+0	0.40
+
+	Title
+Mr	0.58
+Miss	0.21
+Mrs	0.14
+Master	0.04
+Rare	0.03
+
+test (418, 11)
+	FamilySize
+1	0.61
+2	0.18
+3	0.14
+4	0.03
+5	0.02
+11	0.01
+7	0.01
+6	0.01
+8	0.00
+
+	Alone
+1	0.61
+0	0.39
+
+	Title
+Mr	0.57
+Miss	0.19
+Mrs	0.17
+Master	0.05
+Rare	0.01
+
+     Train accuracy 0.7963483146067416
+Validation accuracy 0.8268156424581006
