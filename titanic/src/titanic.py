@@ -1,4 +1,4 @@
-import re
+# 05/2019 Anton Panchenko
 import sys
 print(' python', sys.version)
 
@@ -8,103 +8,199 @@ print('  numpy', np.__version__)
 import pandas as pd
 print(' pandas', pd.__version__)
 
-import sklearn
-print('sklearn', sklearn.__version__)
 from sklearn import preprocessing
 from sklearn import model_selection
 from sklearn import linear_model
+import sklearn as sl
+print('sklearn', sl.__version__)
+
+import xgboost as xgb
+print('xgboost', xgb.__version__)
 
 
-# fill NaNs with mean value
-def fillna_mean(feature: pd.Series):
-    mean = feature.mean()
-    feature.fillna(mean, inplace=True)
+def count(df):
+    stat = pd.DataFrame([df.dtypes, df.count(), df.isna().sum()], index=['dtypes', 'values', 'nans'])
+    return stat.sort_values(by=['values'], axis=1, ascending=False)
 
-
-# extract titles from passenger names
-def get_title(name):
-    title_search = re.search(' ([A-Za-z]+)\.', name)
-    if title_search:
-        return title_search.group(1)
-    return ''
-
-
-# print stats by feature
-def print_feature(df:pd.DataFrame, label:str):
-    ratio = df[label].value_counts() / df.shape[0]
-    print( ratio.apply(lambda x: '{:.2f}'.format(x)).to_csv(header=True, sep='\t') )
-
-
-# load data and setup features
-def prepare_data(name: str) -> pd.Series:
-    # load data
-    df = pd.read_csv('../input/' + name + '.csv')
-    print(name, df.shape)
-    # fill in the missing values
-    fillna_mean(df['Fare'])
-    fillna_mean(df['Age'])
-    fillna_mean(df['SibSp'])
-    fillna_mean(df['Parch'])
-    # new features - FamilySize
-    df['FamilySize'] = df['SibSp'] + df['Parch'] + 1
-    print_feature(df, 'FamilySize')
-    # new features - Alone
-    df['Alone'] = 0
-    df.loc[df['FamilySize'] == 1, 'Alone'] = 1
-    print_feature(df, 'Alone')
-    # new feature - Title
-    df['Title'] = df['Name'].apply(get_title)
-    df['Title'].replace('Mlle', 'Miss', inplace=True)
-    df['Title'].replace('Ms', 'Miss', inplace=True)
-    df['Title'].replace('Mme', 'Mrs', inplace=True)
-    df['Title'].replace(['Lady', 'Countess','Capt', 'Col','Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer', 'Dona'], 'Rare', inplace=True)
-    print_feature(df, 'Title')
+def value_counts(feature):
+    df = pd.DataFrame([feature.value_counts()], index=[feature.name])
+    df['nan'] = feature.isna().sum()
     return df
 
+def encode_cat(df, label:str):
+    target = label.lower() + '_cat'
+    if target in df:
+        df.drop(columns=target, inplace=True)
+    notna = df[label].notna()
+    y = df[notna].loc[:, label]
+    df.loc[notna, target] = sl.preprocessing.LabelEncoder().fit_transform(y).astype('int32')
+    print('\nEncode categorical \'%s\':' % label)
+    print(value_counts(df[target]))
 
-# Preprocess data
-def encode_labels(train, test, label: str):
-    le = preprocessing.LabelEncoder()
-    train[label].fillna('', inplace=True)
-    test[label].fillna('', inplace=True)
-    le.fit(train[label])
-    train.loc[:, label] = le.transform(train[label])
-    test.loc[:, label] = le.transform(test[label])
+def infer_linear(df, features:np.array, target:str):
+    new_feature = target.lower() + '_'
+    print('find %s(%s):' % (new_feature, features))
+    # select training data and fit regressor
+    train = df[df[target].notna()]
+    x = train.loc[:, features]
+    y = train.loc[:, target]
+    
+    model = linear_model.LogisticRegression(C=1000, solver='lbfgs', max_iter=1000)
+    model.fit(X=x, y=y)
+
+    # predict missing target values
+    na_mask = df[target].isna()
+    predict = df[na_mask]
+    x_predict = predict.loc[:, features]
+    y_predict = model.predict(x_predict)
+
+    # create new feature
+    df[new_feature] = df[target]
+    df.loc[na_mask, new_feature] = y_predict
+    #df[new_feature].plot.kde()
+
+def infer(df, params, features:np.array, target:str):
+    new_feature = target.lower() + '_'
+    print('\nInfer %s(%s):' % (new_feature, features))
+    # select training data and fit regressor
+    train = df[df[target].notna()]
+    x = train.loc[:, features]
+    y = train.loc[:, target]
+    regressor = xgb.XGBRegressor(n_jobs=4)
+    grid = sl.model_selection.GridSearchCV(regressor, params, cv=5, iid=True).fit(x, y)
+    print('score', grid.best_score_)
+    print('best params', grid.best_params_)
+    regressor = grid.best_estimator_
+    
+    # predict missing target values
+    na_mask = df[target].isna()
+    predict = df[na_mask]
+    x_predict = predict.loc[:, features]
+    y_predict = regressor.predict(x_predict)
+
+    # create new feature
+    df[new_feature] = df[target]
+    df.loc[na_mask, new_feature] = y_predict
+    #df[new_feature].plot.kde()
+
+    # show feature importance
+    feature_importance = pd.DataFrame({'feature':features, 'importance':regressor.feature_importances_})
+    print('Feature importance:')
+    print(feature_importance.sort_values(by='importance', ascending=False))
 
 
-def main():
-    train = prepare_data('train')
-    test = prepare_data('test')
+def infer_cat(df, params, features, target:str):
+    new_feature = target.lower() + '_'
+    print('\nInfer categorical %s(%s):' % (new_feature, features))  
+    # select training data and classifier
+    train = df[df[target].notna()]
+    x = train.loc[:, features]
+    y = train.loc[:, target]
+    estimator = xgb.XGBClassifier(n_jobs=4)
+    grid = sl.model_selection.GridSearchCV(estimator, params, cv=3).fit(x, y)
+    print('score', grid.best_score_)
+    print('params', grid.best_params_)
+    estimator = grid.best_estimator_
+    
+    # predict missing target values 
+    na = df[target].isna()
+    x_predict = df[na].loc[:, features]
+    y_predict = estimator.predict(x_predict)
+    
+    # create new feature
+    df[new_feature] = df[target]
+    df.loc[na, new_feature] = y_predict
+    df[new_feature] = df[new_feature].astype('int64')
+    print(value_counts(df[new_feature]))
 
-    encode_labels(train, test, 'Sex')
-    encode_labels(train, test, 'Embarked')
-    encode_labels(train, test, 'Title')
+    # show feature importance
+    feature_importance = pd.DataFrame({'feature':features, 'importance':estimator.feature_importances_})
+    print('Feature importance:')
+    print(feature_importance.sort_values(by='importance', ascending=False))
 
-    # prepare train for fitting
-    # other features appears useless
-    features = ['Age', 'Sex', 'Pclass', 'Fare', 'Parch', 'Alone']
-    X = train.loc[:, features]
-    Y = train.loc[:, 'Survived']
-    XTest = test.loc[:, features]
-    XTrain, XValid, YTrain, YValid = model_selection.train_test_split(X, Y, test_size=0.2, random_state=40)
+class Titanic:
+    def __init__(self):
+        # Load and merge datasets
+        self.train = pd.read_csv('../input/train.csv')
+        self.test = pd.read_csv('../input/test.csv')
+        self.data = self.train.append(self.test, sort=False)
+        print('\nMeet data:\n', self.data.sample(5))
+        # Look at types and incomplete features
+        print('\nTypes and counts:\n', count(self.data))
 
+    # Extract Title from Name
+    def title(self):
+        # See english honorifics (https://en.wikipedia.org/wiki/English_honorifics) for reference.
+        self.data['title'] = self.data['Name'].str.extract(r', (.*?)\.', expand=False)
+        print('\nExtract title from name:\n', value_counts(self.data['title']))
+        self.data['title'].replace(['Mlle', 'Ms'], 'Miss', inplace=True)
+        self.data['title'].replace(['Mme', 'Lady', 'Countess', 'Dona', 'the Countess'], 'Mrs', inplace=True)
+        self.data['title'].replace(['Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer'], 'Mr', inplace=True)
+        print('\nReplace rare titles:\n', value_counts(self.data['title']))
+        encode_cat(self.data, 'title')
 
-    # Fit logistic regression using scikit
-    LR = linear_model.LogisticRegression(C=1000, solver='lbfgs', max_iter=1000)
-    LR.fit(X=XTrain, y=YTrain)
+    # Encode Sex
+    def sex(self):
+        encode_cat(self.data, 'Sex')
 
-    def accuracy(Y: np.array, yPred: np.array) -> float:
-      return np.sum(yPred==Y) / len(Y)
+    # Unite families
+    def family(self):
+        self.data['family'] = self.data['SibSp'] + self.data['Parch'] + 1
+        print('\nSibSp + Parch = family:')
+        print(value_counts(self.data['family']))
 
-    # Use model to predict on training and validation sets
-    print('     Train accuracy', accuracy(YTrain, LR.predict(XTrain)))
-    print('Validation accuracy', accuracy(YValid, LR.predict(XValid)))
+    # Check tickets
+    def ticket(self):
+        encode_cat(self.data, 'Ticket')
 
-    # Predict for test set
-    # Create a Kaggle submission
-    sub = pd.DataFrame({'PassengerId': test['PassengerId'], 'Survived': LR.predict(XTest)})
-    sub.to_csv('submission.csv', index=False)
+    # Pay Fare (best score 0.8489)
+    def fare(self):
+        params = {'max_depth': [2, 3, 4],
+                'learning_rate': [0.3, 0.4, 0.5],
+                'n_estimators': [150, 170, 190]}
+        self.features = ['Pclass', 'title_cat', 'sex_cat', 'family', 'ticket_cat']
+        infer(self.data, params, self.features, 'Fare')
+        #infer_linear(self.data, self.features, 'Fare')
+
+    # Encode and fix Embarked (best score 0.9479)
+    def embarked(self):
+        encode_cat(self.data, 'Embarked')
+        params = {'max_depth': [3, 4, 5],
+                'learning_rate': [0.4, 0.5, 0.6],
+                'n_estimators': [400, 500, 600]}
+        self.features = np.append(self.features, 'fare_')
+        infer_cat(self.data, params, self.features, 'embarked_cat')
+
+    # Fix Age (best score 0.4230)
+    def age(self):
+        self.features = np.append(self.features, 'embarked_cat_')
+        params = {'max_depth': [2, 3],
+                'learning_rate': [0.04, 0.05, 0.08],
+                'n_estimators': [90, 100, 120]}
+        infer(self.data, params, self.features, 'Age')        
+
+    # Final glance at data
+    def survived(self):
+        print('\nFinal data:\n', count(self.data))
+        # Finally predict Survived (best score 0.8350)
+        features = np.append(self.features, 'age_')
+        params = {'max_depth': [3, 4, 5],
+                'learning_rate': [0.1, 0.3],
+                'n_estimators': [70, 100, 300]}
+        infer_cat(self.data, params, features, 'Survived')
+        # create submission
+        na_mask = self.data['Survived'].isna()
+        sub = pd.DataFrame({'PassengerId': self.test['PassengerId'], 'Survived': self.data[na_mask].loc[:, 'survived_']})
+        sub.to_csv('submission.csv', index=False)
 
 
 if __name__=='__main__':
-    main()
+    titanic = Titanic()
+    titanic.title()
+    titanic.sex()
+    titanic.family()
+    titanic.ticket()
+    titanic.fare()
+    titanic.embarked()
+    titanic.age()
+    titanic.survived()
