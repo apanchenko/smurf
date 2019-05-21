@@ -1,14 +1,25 @@
-import numpy as np
-import pandas as pd
 import re
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
-from sklearn import linear_model# import LogisticRegression
+import sys
+print(' python', sys.version)
+
+import numpy as np
+print('  numpy', np.__version__)
+
+import pandas as pd
+print(' pandas', pd.__version__)
+
+import sklearn
+print('sklearn', sklearn.__version__)
+from sklearn import preprocessing
+from sklearn import model_selection
+from sklearn import linear_model
+
 
 # fill NaNs with mean value
 def fillna_mean(feature: pd.Series):
     mean = feature.mean()
     feature.fillna(mean, inplace=True)
+
 
 # extract titles from passenger names
 def get_title(name):
@@ -17,10 +28,12 @@ def get_title(name):
         return title_search.group(1)
     return ''
 
+
 # print stats by feature
 def print_feature(df:pd.DataFrame, label:str):
     ratio = df[label].value_counts() / df.shape[0]
     print( ratio.apply(lambda x: '{:.2f}'.format(x)).to_csv(header=True, sep='\t') )
+
 
 # load data and setup features
 def prepare_data(name: str) -> pd.Series:
@@ -48,43 +61,50 @@ def prepare_data(name: str) -> pd.Series:
     print_feature(df, 'Title')
     return df
 
-train = prepare_data('train')
-test = prepare_data('test')
 
 # Preprocess data
-def encode_labels(label: str):
-    le = LabelEncoder()
+def encode_labels(train, test, label: str):
+    le = preprocessing.LabelEncoder()
     train[label].fillna('', inplace=True)
     test[label].fillna('', inplace=True)
     le.fit(train[label])
     train.loc[:, label] = le.transform(train[label])
     test.loc[:, label] = le.transform(test[label])
 
-encode_labels('Sex')
-encode_labels('Embarked')
-encode_labels('Title')
 
-# prepare train for fitting
-# other features appears useless
-features = ['Age', 'Sex', 'Pclass', 'Fare', 'Parch', 'Alone']
-X = train.loc[:, features]
-Y = train.loc[:, 'Survived']
-XTest = test.loc[:, features]
-XTrain, XValid, YTrain, YValid = train_test_split(X, Y, test_size=0.2, random_state=40)
+def main():
+    train = prepare_data('train')
+    test = prepare_data('test')
+
+    encode_labels(train, test, 'Sex')
+    encode_labels(train, test, 'Embarked')
+    encode_labels(train, test, 'Title')
+
+    # prepare train for fitting
+    # other features appears useless
+    features = ['Age', 'Sex', 'Pclass', 'Fare', 'Parch', 'Alone']
+    X = train.loc[:, features]
+    Y = train.loc[:, 'Survived']
+    XTest = test.loc[:, features]
+    XTrain, XValid, YTrain, YValid = model_selection.train_test_split(X, Y, test_size=0.2, random_state=40)
 
 
-# Fit logistic regression using scikit
-LR = linear_model.LogisticRegression(C=1000, solver='lbfgs', max_iter=1000)
-LR.fit(X=XTrain, y=YTrain)
+    # Fit logistic regression using scikit
+    LR = linear_model.LogisticRegression(C=1000, solver='lbfgs', max_iter=1000)
+    LR.fit(X=XTrain, y=YTrain)
 
-def accuracy(Y: np.array, yPred: np.array) -> float:
-  return np.sum(yPred==Y) / len(Y)
+    def accuracy(Y: np.array, yPred: np.array) -> float:
+      return np.sum(yPred==Y) / len(Y)
 
-# Use model to predict on training and validation sets
-print('     Train accuracy', accuracy(YTrain, LR.predict(XTrain)))
-print('Validation accuracy', accuracy(YValid, LR.predict(XValid)))
+    # Use model to predict on training and validation sets
+    print('     Train accuracy', accuracy(YTrain, LR.predict(XTrain)))
+    print('Validation accuracy', accuracy(YValid, LR.predict(XValid)))
 
-# Predict for test set
-# Create a Kaggle submission
-sub = pd.DataFrame({'PassengerId': test['PassengerId'], 'Survived': LR.predict(XTest)})
-sub.to_csv('submission.csv', index=False)
+    # Predict for test set
+    # Create a Kaggle submission
+    sub = pd.DataFrame({'PassengerId': test['PassengerId'], 'Survived': LR.predict(XTest)})
+    sub.to_csv('submission.csv', index=False)
+
+
+if __name__=='__main__':
+    main()

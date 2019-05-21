@@ -1,3 +1,7 @@
+ python 3.7.3 (v3.7.3:ef4ec6ed12, Mar 25 2019, 22:22:05) [MSC v.1916 64 bit (AMD64)]
+  numpy 1.16.3
+ pandas 0.24.2
+sklearn 0.21.1
 train (891, 12)
 	FamilySize
 1	0.60
