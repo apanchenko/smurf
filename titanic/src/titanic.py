@@ -3,7 +3,7 @@ import xgboost as xgb
 import sklearn as sl
 from sklearn import linear_model
 from sklearn import model_selection
-from sklearn import preprocessing
+from sklearn.preprocessing import LabelEncoder
 import pandas as pd
 import numpy as np
 import sys
@@ -43,7 +43,7 @@ class Smurf:
         target = label.lower() + '_cat'
         notna = self.data[label].notna()
         y = self.data[notna].loc[:, label]
-        self.data.loc[notna, target] = sl.preprocessing.LabelEncoder().fit_transform(y).astype('int32')
+        self.data.loc[notna, target] = LabelEncoder().fit_transform(y).astype('int32')
         self.print_value_counts('\nEncode categorical \'%s\':' % label, self.data[target])
 
     def infer(self, params, features: np.array, target: str):
@@ -52,35 +52,28 @@ class Smurf:
         else:
             self.infer_linear(features, target)
 
-    def infer_linear(self, features: np.array, target: str):
-        new_feature = target.lower() + '_'
-        print('find %s(%s):' % (new_feature, features))
+    def infer_linear(self, features: np.array, label: str):
+        print('find %s(%s):' % (label, features))
         # select training data and fit regressor
-        train = self.data[self.data[target].notna()]
+        train = self.data[self.data[label].notna()]
         x = train.loc[:, features]
-        y = train.loc[:, target]
+        y = train.loc[:, label]
 
         model = linear_model.LinearRegression()
-        model.fit(X=x, y=y)
+        model.fit(x, y)
 
         # predict missing target values
-        na_mask = self.data[target].isna()
+        na_mask = self.data[label].isna()
         predict = self.data[na_mask]
         x_predict = predict.loc[:, features]
-        y_predict = model.predict(x_predict)
+        self.data.loc[na_mask, label] = model.predict(x_predict)
 
-        # create new feature
-        self.data[new_feature] = self.data[target]
-        self.data.loc[na_mask, new_feature] = y_predict
-        # self.data[new_feature].plot.kde()
-
-    def infer_xgb(self, params, features: np.array, target: str):
-        new_feature = target.lower() + '_'
-        print('\nInfer %s(%s):' % (new_feature, features))
+    def infer_xgb(self, params, features: np.array, label: str):
+        print('\nInfer %s(%s):' % (label, features))
         # select training data and fit regressor
-        train = self.data[self.data[target].notna()]
+        train = self.data[self.data[label].notna()]
         x = train.loc[:, features]
-        y = train.loc[:, target]
+        y = train.loc[:, label]
         regressor = xgb.XGBRegressor(n_jobs=4)
         grid = sl.model_selection.GridSearchCV(regressor, params, cv=5, iid=True).fit(x, y)
         print('score', grid.best_score_)
@@ -88,15 +81,10 @@ class Smurf:
         regressor = grid.best_estimator_
 
         # predict missing target values
-        na_mask = self.data[target].isna()
-        predict = self.data[na_mask]
+        na = self.data[label].isna()
+        predict = self.data[na]
         x_predict = predict.loc[:, features]
-        y_predict = regressor.predict(x_predict)
-
-        # create new feature
-        self.data[new_feature] = self.data[target]
-        self.data.loc[na_mask, new_feature] = y_predict
-        # self.data[new_feature].plot.kde()
+        self.data.loc[na, label] = regressor.predict(x_predict)
 
         # show feature importance
         feature_importance = pd.DataFrame({'feature': features, 'importance': regressor.feature_importances_})
@@ -147,7 +135,7 @@ class Smurf:
         x = train.loc[:, features]
         y = train.loc[:, target]
 
-        model = linear_model.LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=1000)
+        model = linear_model.LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000)
         model.fit(X=x, y=y)
 
         # predict missing target values
@@ -172,11 +160,10 @@ class Titanic(Smurf):
     def title(self):
         # See english honorifics (https://en.wikipedia.org/wiki/English_honorifics) for reference.
         self.data['title'] = self.data['Name'].str.extract(r', (.*?)\.', expand=False)
-        self.print_value_counts('\nExtract title from name:\n', self.data['title'])
+        self.print_value_counts('\nExtract title from name:', self.data['title'])
         self.data['title'].replace(['Mlle', 'Ms'], 'Miss', inplace=True)
         self.data['title'].replace(['Mme', 'Lady', 'Countess', 'Dona', 'the Countess'], 'Mrs', inplace=True)
         self.data['title'].replace(['Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer'], 'Mr', inplace=True)
-        self.print_value_counts('\nReplace rare titles:\n', self.data['title'])
         self.encode_cat('title')
 
     # Encode Sex
@@ -207,7 +194,7 @@ class Titanic(Smurf):
         params = {'max_depth': [3, 4, 5],
                   'learning_rate': [0.4, 0.5, 0.6],
                   'n_estimators': [400, 500, 600]}
-        self.features = np.append(self.features, 'fare_')
+        self.features = np.append(self.features, 'Fare')
         self.infer_cat(params, self.features, 'embarked_cat')
 
     # Fix Age (best score 0.4230)
@@ -221,7 +208,7 @@ class Titanic(Smurf):
     # Final glance at data
     def survived(self):
         # Finally predict Survived (best score 0.8350)
-        features = np.append(self.features, 'age_')
+        features = np.append(self.features, 'Age')
         params = {'max_depth': [3, 4, 5],
                   'learning_rate': [0.1, 0.3],
                   'n_estimators': [70, 100, 300]}
