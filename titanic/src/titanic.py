@@ -38,10 +38,11 @@ class Smurf:
         print(df)
 
     def encode_cat(self, label:str):
+        target = label.lower() + '_cat'
         notna = self.data[label].notna()
         y = self.data[notna].loc[:, label]
-        self.data.loc[notna, label] = sl.preprocessing.LabelEncoder().fit_transform(y).astype('int32')
-        self.print_value_counts('\nEncode categorical \'%s\':' % label, self.data[label])
+        self.data.loc[notna, target] = sl.preprocessing.LabelEncoder().fit_transform(y).astype('int32')
+        self.print_value_counts('\nEncode categorical \'%s\':' % label, self.data[target])
 
     def infer(self, df, params, features:np.array, target:str):
         if self.use_xgb:
