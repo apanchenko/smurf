@@ -97,13 +97,12 @@ class Smurf:
         else:
             self.infer_cat_linear(params, features, target)
 
-    def infer_cat_xgb(self, params, features, target: str):
-        new_feature = target.lower() + '_'
-        print('\nInfer categorical %s(%s):' % (new_feature, features))
+    def infer_cat_xgb(self, params, features, label: str):
+        print('\nInfer categorical %s(%s):' % (label, features))
         # select training data and classifier
-        train = self.data[self.data[target].notna()]
+        train = self.data[self.data[label].notna()]
         x = train.loc[:, features]
-        y = train.loc[:, target]
+        y = train.loc[:, label]
         estimator = xgb.XGBClassifier(n_jobs=4)
         grid = sl.model_selection.GridSearchCV(estimator, params, cv=3).fit(x, y)
         print('score', grid.best_score_)
@@ -111,15 +110,13 @@ class Smurf:
         estimator = grid.best_estimator_
 
         # predict missing target values
-        na = self.data[target].isna()
+        na = self.data[label].isna()
         x_predict = self.data[na].loc[:, features]
-        y_predict = estimator.predict(x_predict)
 
         # create new feature
-        self.data[new_feature] = self.data[target]
-        self.data.loc[na, new_feature] = y_predict
-        self.data[new_feature] = self.data[new_feature].astype('int64')
-        self.print_value_counts('', self.data[new_feature])
+        self.data.loc[na, label] = estimator.predict(x_predict)
+        self.data[label] = self.data[label].astype('int64')
+        self.print_value_counts('', self.data[label])
 
         # show feature importance
         feature_importance = pd.DataFrame(
@@ -127,27 +124,24 @@ class Smurf:
         print('Feature importance:')
         print(feature_importance.sort_values(by='importance', ascending=False))
 
-    def infer_cat_linear(self, params, features, target: str):
-        new_feature = target.lower() + '_'
-        print('\nInfer categorical %s(%s):' % (new_feature, features))
+    def infer_cat_linear(self, params, features, label: str):
+        print('\nInfer categorical %s(%s):' % (label, features))
         # select training data and classifier
-        train = self.data[self.data[target].notna()]
+        train = self.data[self.data[label].notna()]
         x = train.loc[:, features]
-        y = train.loc[:, target]
+        y = train.loc[:, label]
 
         model = linear_model.LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000)
-        model.fit(X=x, y=y)
+        model.fit(x, y)
 
         # predict missing target values
-        na = self.data[target].isna()
+        na = self.data[label].isna()
         x_predict = self.data[na].loc[:, features]
-        y_predict = model.predict(x_predict)
 
         # create new feature
-        self.data[new_feature] = self.data[target]
-        self.data.loc[na, new_feature] = y_predict
-        self.data[new_feature] = self.data[new_feature].astype('int64')
-        self.print_value_counts('', self.data[new_feature])
+        self.data.loc[na, label] = model.predict(x_predict)
+        self.data[label] = self.data[label].astype('int64')
+        self.print_value_counts('', self.data[label])
 
 
 class Titanic(Smurf):
@@ -199,7 +193,7 @@ class Titanic(Smurf):
 
     # Fix Age (best score 0.4230)
     def age(self):
-        self.features = np.append(self.features, 'embarked_cat_')
+        self.features = np.append(self.features, 'embarked_cat')
         params = {'max_depth': [2, 3],
                   'learning_rate': [0.04, 0.05, 0.08],
                   'n_estimators': [90, 100, 120]}
@@ -214,9 +208,8 @@ class Titanic(Smurf):
                   'n_estimators': [70, 100, 300]}
         self.infer_cat(params, features, 'Survived')
         # create submission
-        na_mask = self.data['Survived'].isna()
-        sub = pd.DataFrame(
-            {'PassengerId': self.test['PassengerId'], 'Survived': self.data[na_mask].loc[:, 'survived_']})
+        na = self.data['Survived'].isna()
+        sub = pd.DataFrame({'PassengerId': self.test['PassengerId'], 'Survived': self.data[na].loc[:, 'Survived']})
         sub.to_csv('submission.csv', index=False)
 
 
