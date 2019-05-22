@@ -32,18 +32,16 @@ class Smurf:
         return stat.sort_values(by=['values'], axis=1, ascending=False)
 
     def print_value_counts(self, msg, feature):
+        print(msg)
         df = pd.DataFrame([feature.value_counts()], index=[feature.name])
         df['nan'] = feature.isna().sum()
-        print(msg, df)
+        print(df)
 
-    def encode_cat(self, df, label:str):
-        target = label.lower() + '_cat'
-        if target in df:
-            df.drop(columns=target, inplace=True)
-        notna = df[label].notna()
-        y = df[notna].loc[:, label]
-        df.loc[notna, target] = sl.preprocessing.LabelEncoder().fit_transform(y).astype('int32')
-        self.print_value_counts('\nEncode categorical \'%s\':' % label, df[target])
+    def encode_cat(self, label:str):
+        notna = self.data[label].notna()
+        y = self.data[notna].loc[:, label]
+        self.data.loc[notna, label] = sl.preprocessing.LabelEncoder().fit_transform(y).astype('int32')
+        self.print_value_counts('\nEncode categorical \'%s\':' % label, self.data[label])
 
     def infer(self, df, params, features:np.array, target:str):
         if self.use_xgb:
@@ -175,11 +173,11 @@ class Titanic(Smurf):
         self.data['title'].replace(['Mme', 'Lady', 'Countess', 'Dona', 'the Countess'], 'Mrs', inplace=True)
         self.data['title'].replace(['Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer'], 'Mr', inplace=True)
         self.print_value_counts('\nReplace rare titles:\n', self.data['title'])
-        self.encode_cat(self.data, 'title')
+        self.encode_cat('title')
 
     # Encode Sex
     def sex(self):
-        self.encode_cat(self.data, 'Sex')
+        self.encode_cat('Sex')
 
     # Unite families
     def family(self):
@@ -188,7 +186,7 @@ class Titanic(Smurf):
 
     # Check tickets
     def ticket(self):
-        self.encode_cat(self.data, 'Ticket')
+        self.encode_cat('Ticket')
 
     # Pay Fare (best score 0.8489)
     def fare(self):
@@ -201,7 +199,7 @@ class Titanic(Smurf):
 
     # Encode and fix Embarked (best score 0.9479)
     def embarked(self):
-        self.encode_cat(self.data, 'Embarked')
+        self.encode_cat('Embarked')
         params = {'max_depth': [3, 4, 5],
                 'learning_rate': [0.4, 0.5, 0.6],
                 'n_estimators': [400, 500, 600]}
