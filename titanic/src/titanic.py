@@ -4,6 +4,7 @@ import sklearn as sl
 from sklearn import linear_model
 from sklearn import model_selection
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
 import sys
@@ -23,9 +24,11 @@ class Smurf:
         self.use_xgb = use_xgb
         # merge datasets
         self.data = train.append(test, sort=False)
-        print('\nMeet data:\n', self.data.sample(5))
+        print('\nMeet data:')
+        print(self.data.sample(5))
         # look at types and incomplete features
-        print('\nTypes and counts:\n', self.count())
+        print('\nTypes and counts:')
+        print(self.count())
 
     def count(self):
         stat = pd.DataFrame(
@@ -35,7 +38,7 @@ class Smurf:
 
     def print_value_counts(self, msg, feature):
         print(msg)
-        df = pd.DataFrame([feature.value_counts()], index=[feature.name])
+        df = pd.DataFrame([feature.value_counts()], index=[feature.name + ' ' + str(feature.dtypes)])
         df['nan'] = feature.isna().sum()
         print(df)
 
@@ -44,16 +47,17 @@ class Smurf:
         notna = self.data[label].notna()
         y = self.data[notna].loc[:, label]
         self.data.loc[notna, target] = LabelEncoder().fit_transform(y).astype('int32')
-        self.print_value_counts('\nEncode categorical \'%s\':' % label, self.data[target])
+        self.data[label] = self.data[target]
+        self.print_value_counts('\nEncode categorical \'%s\':' % label, self.data[label])
 
-    def infer(self, params, features: np.array, target: str):
+    def infer(self, params, features: np.array, label: str):
+        print('Infer ', label)
         if self.use_xgb:
-            self.infer_xgb(params, features, target)
+            self.infer_xgb(params, features, label)
         else:
-            self.infer_linear(features, target)
+            self.infer_linear(features, label)
 
     def infer_linear(self, features: np.array, label: str):
-        print('find %s(%s):' % (label, features))
         # select training data and fit regressor
         train = self.data[self.data[label].notna()]
         x = train.loc[:, features]
@@ -69,7 +73,6 @@ class Smurf:
         self.data.loc[na_mask, label] = model.predict(x_predict)
 
     def infer_xgb(self, params, features: np.array, label: str):
-        print('\nInfer %s(%s):' % (label, features))
         # select training data and fit regressor
         train = self.data[self.data[label].notna()]
         x = train.loc[:, features]
@@ -91,14 +94,14 @@ class Smurf:
         print('Feature importance:')
         print(feature_importance.sort_values(by='importance', ascending=False))
 
-    def infer_cat(self, params, features, target: str):
+    def infer_cat(self, params, features, label: str):
+        print('\nInfer categorical ', label)
         if self.use_xgb:
-            self.infer_cat_xgb(params, features, target)
+            self.infer_cat_xgb(params, features, label)
         else:
-            self.infer_cat_linear(params, features, target)
+            self.infer_cat_linear(params, features, label)
 
     def infer_cat_xgb(self, params, features, label: str):
-        print('\nInfer categorical %s(%s):' % (label, features))
         # select training data and classifier
         train = self.data[self.data[label].notna()]
         x = train.loc[:, features]
@@ -124,23 +127,26 @@ class Smurf:
         print('Feature importance:')
         print(feature_importance.sort_values(by='importance', ascending=False))
 
+    def accuracy(self, y, yPred) -> float:
+        return np.sum(yPred == y) / len(y)
+
     def infer_cat_linear(self, params, features, label: str):
-        print('\nInfer categorical %s(%s):' % (label, features))
         # select training data and classifier
         train = self.data[self.data[label].notna()]
         x = train.loc[:, features]
         y = train.loc[:, label]
+        xt, xv, yt, yv = train_test_split(x, y, test_size=0.2, random_state=40)
 
         model = linear_model.LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000)
-        model.fit(x, y)
+        model.fit(xt, yt)
+        print('     Train accuracy', self.accuracy(yt, model.predict(xt)))
+        print('Validation accuracy', self.accuracy(yv, model.predict(xv)))
 
-        # predict missing target values
+        # predict
         na = self.data[label].isna()
-        x_predict = self.data[na].loc[:, features]
-
-        # create new feature
-        self.data.loc[na, label] = model.predict(x_predict)
-        self.data[label] = self.data[label].astype('int64')
+        test = self.data[na]
+        self.data.loc[na, label] = model.predict(test.loc[:, features])
+        self.data[label] = self.data[label].astype('int32')
         self.print_value_counts('', self.data[label])
 
 
@@ -175,7 +181,7 @@ class Titanic(Smurf):
 
     # Pay Fare (best score 0.8489)
     def fare(self):
-        self.features = ['Pclass', 'title_cat', 'sex_cat', 'family', 'ticket_cat']
+        self.features = ['Pclass', 'title', 'Sex', 'family', 'Ticket']
         #self.features = ['Pclass', 'title_cat', 'sex_cat']
         params = {'max_depth': [2, 3, 4],
                   'learning_rate': [0.3, 0.4, 0.5],
@@ -189,11 +195,11 @@ class Titanic(Smurf):
                   'learning_rate': [0.4, 0.5, 0.6],
                   'n_estimators': [400, 500, 600]}
         self.features = np.append(self.features, 'Fare')
-        self.infer_cat(params, self.features, 'embarked_cat')
+        self.infer_cat(params, self.features, 'Embarked')
 
     # Fix Age (best score 0.4230)
     def age(self):
-        self.features = np.append(self.features, 'embarked_cat')
+        self.features = np.append(self.features, 'Embarked')
         params = {'max_depth': [2, 3],
                   'learning_rate': [0.04, 0.05, 0.08],
                   'n_estimators': [90, 100, 120]}
