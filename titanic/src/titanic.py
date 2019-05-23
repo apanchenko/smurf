@@ -41,6 +41,9 @@ class Smurf:
             index=['dtypes', 'values', 'nans'])
         return stat.sort_values(by=['values'], axis=1, ascending=False)
 
+    def accuracy(self, y, yPred) -> float:
+        return np.sum(yPred == y) / len(y)
+
     def value_counts(self, label : str):
         feature = self.data[label]
         df = pd.DataFrame([feature.value_counts()], index=[feature.name + ' ' + str(feature.dtypes)])
@@ -101,59 +104,50 @@ class Smurf:
         print(feature_importance.sort_values(by='importance', ascending=False))
 
     def infer_cat(self, params, features, label: str):
-        print('Infer categorical ', label)
-        if self.use_xgb:
-            self.infer_cat_xgb(params, features, label)
-        else:
-            self.infer_cat_linear(params, features, label)
-
-    def infer_cat_xgb(self, params, features, label: str):
-        # select training data and classifier
-        train = self.data[self.data[label].notna()]
-        x = train.loc[:, features]
-        y = train.loc[:, label]
-        estimator = xgb.XGBClassifier(n_jobs=4)
-        grid = sl.model_selection.GridSearchCV(estimator, params, cv=3).fit(x, y)
-        print('score', grid.best_score_)
-        print('params', grid.best_params_)
-        estimator = grid.best_estimator_
-
-        # predict missing target values
-        na = self.data[label].isna()
-        x_predict = self.data[na].loc[:, features]
-
-        # create new feature
-        self.data.loc[na, label] = estimator.predict(x_predict)
-        self.data[label] = self.data[label].astype('int64')
-        print(self.value_counts(label))
-
-        # show feature importance
-        feature_importance = pd.DataFrame(
-            {'feature': features, 'importance': estimator.feature_importances_})
-        print('Feature importance:')
-        print(feature_importance.sort_values(by='importance', ascending=False))
-
-    def accuracy(self, y, yPred) -> float:
-        return np.sum(yPred == y) / len(y)
-
-    def infer_cat_linear(self, params, features, label: str):
+        print('Infer categorical', label)
         # select training data and classifier
         train = self.data[self.data[label].notna()]
         x = train.loc[:, features]
         y = train.loc[:, label]
         xt, xv, yt, yv = train_test_split(x, y, test_size=0.2, random_state=40)
 
-        model = linear_model.LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000)
-        model.fit(xt, yt)
+        model = None
+        if self.use_xgb:
+            model = self.infer_cat_xgb(params, features, label)
+        else:
+            model = self.infer_cat_linear(xt, yt)
+
         print('     Train accuracy', self.accuracy(yt, model.predict(xt)))
         print('Validation accuracy', self.accuracy(yv, model.predict(xv)))
 
-        # predict
+        # predict missing target values
         na = self.data[label].isna()
         test = self.data[na]
         self.data.loc[na, label] = model.predict(test.loc[:, features])
         self.data[label] = self.data[label].astype('int32')
-        print(self.value_counts(label))
+        print(self.value_counts(label))        
+
+    def infer_cat_xgb(self, params, features, label: str):
+        # select training data and classifier
+        train = self.data[self.data[label].notna()]
+        x = train.loc[:, features]
+        y = train.loc[:, label]
+        model = xgb.XGBClassifier(n_jobs=4)
+        grid = sl.model_selection.GridSearchCV(model, params, cv=3).fit(x, y)
+        print('score', grid.best_score_)
+        print('params', grid.best_params_)
+        model = grid.best_estimator_
+
+        # show feature importance
+        feature_importance = pd.DataFrame({'feature': features, 'importance': model.feature_importances_})
+        print('Feature importance:')
+        print(feature_importance.sort_values(by='importance', ascending=False))
+        return model
+
+    def infer_cat_linear(self, xt, yt):
+        model = linear_model.LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000)
+        model.fit(xt, yt)
+        return model
 
 
 class Titanic(Smurf):
