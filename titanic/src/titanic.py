@@ -20,9 +20,10 @@ print('xgboost', xgb.__version__)
 
 
 class Smurf:
-    def __init__(self, use_xgb, train, test):
+    def __init__(self, use_xgb, n_jobs, train, test):
         print('===='*20)
         self.use_xgb = use_xgb
+        self.n_jobs = n_jobs
         # merge datasets
         self.data = train.append(test, sort=False)
         print('Meet data:')
@@ -80,9 +81,9 @@ class Smurf:
         self.data.loc[na, label] = model.predict(x_predict)
 
     def _infer_linear(self, xt, xv, yt, yv):
-        model = linear_model.LinearRegression()
+        model = linear_model.LinearRegression(normalize=True, n_jobs=self.n_jobs)
         model.fit(xt, yt)
-        print('Score', model.score(xv, yv))
+        print('Score {:.4f}'.format(model.score(xv, yv)))
         return model
 
     def _infer_xgb(self, params, xt, xv, yt, yv):
@@ -119,7 +120,7 @@ class Smurf:
         print(self.value_counts(label))        
 
     def _infer_cat_xgb(self, params, xt, xv, yt, yv):
-        model = xgb.XGBClassifier(n_jobs=4)
+        model = xgb.XGBClassifier(n_jobs=self.n_jobs)
         grid = sl.model_selection.GridSearchCV(model, params, cv=3).fit(xt, yt)
         print('score', grid.best_score_)
         print('params', grid.best_params_)
@@ -139,10 +140,10 @@ class Smurf:
 
 
 class Titanic(Smurf):
-    def __init__(self, use_xgb):
+    def __init__(self, use_xgb, n_jobs):
         self.train = pd.read_csv('../input/train.csv')
         self.test = pd.read_csv('../input/test.csv')
-        Smurf.__init__(self, use_xgb, self.train, self.test)
+        Smurf.__init__(self, use_xgb, n_jobs, self.train, self.test)
 
     # Extract Title from Name
     def title(self):
@@ -217,7 +218,7 @@ class Titanic(Smurf):
 
 
 if __name__ == '__main__':
-    titanic = Titanic(False)
+    titanic = Titanic(use_xgb=False, n_jobs=4)
     titanic.title()
     titanic.sex()
     titanic.family()
