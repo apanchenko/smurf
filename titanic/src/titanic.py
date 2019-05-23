@@ -21,14 +21,19 @@ print('xgboost', xgb.__version__)
 
 class Smurf:
     def __init__(self, use_xgb, train, test):
+        print('===='*20)
         self.use_xgb = use_xgb
         # merge datasets
         self.data = train.append(test, sort=False)
-        print('\nMeet data:')
+        print('Meet data:')
         print(self.data.sample(5))
         # look at types and incomplete features
         print('\nTypes and counts:')
         print(self.count())
+
+    def print_cutline(self):
+        print('\n')
+        print('----'*20)
 
     def count(self):
         stat = pd.DataFrame(
@@ -36,11 +41,11 @@ class Smurf:
             index=['dtypes', 'values', 'nans'])
         return stat.sort_values(by=['values'], axis=1, ascending=False)
 
-    def print_value_counts(self, msg, feature):
-        print(msg)
+    def value_counts(self, label : str):
+        feature = self.data[label]
         df = pd.DataFrame([feature.value_counts()], index=[feature.name + ' ' + str(feature.dtypes)])
         df['nan'] = feature.isna().sum()
-        print(df)
+        return df
 
     def encode_cat(self, label: str):
         target = label.lower() + '_cat'
@@ -48,7 +53,8 @@ class Smurf:
         y = self.data[notna].loc[:, label]
         self.data.loc[notna, target] = LabelEncoder().fit_transform(y).astype('int32')
         self.data[label] = self.data[target]
-        self.print_value_counts('\nEncode categorical \'%s\':' % label, self.data[label])
+        print('Encode categorical \'%s\':' % label)
+        print(self.value_counts(label))
 
     def infer(self, params, features: np.array, label: str):
         print('Infer ', label)
@@ -95,7 +101,7 @@ class Smurf:
         print(feature_importance.sort_values(by='importance', ascending=False))
 
     def infer_cat(self, params, features, label: str):
-        print('\nInfer categorical ', label)
+        print('Infer categorical ', label)
         if self.use_xgb:
             self.infer_cat_xgb(params, features, label)
         else:
@@ -119,7 +125,7 @@ class Smurf:
         # create new feature
         self.data.loc[na, label] = estimator.predict(x_predict)
         self.data[label] = self.data[label].astype('int64')
-        self.print_value_counts('', self.data[label])
+        print(self.value_counts(label))
 
         # show feature importance
         feature_importance = pd.DataFrame(
@@ -147,7 +153,7 @@ class Smurf:
         test = self.data[na]
         self.data.loc[na, label] = model.predict(test.loc[:, features])
         self.data[label] = self.data[label].astype('int32')
-        self.print_value_counts('', self.data[label])
+        print(self.value_counts(label))
 
 
 class Titanic(Smurf):
@@ -158,9 +164,11 @@ class Titanic(Smurf):
 
     # Extract Title from Name
     def title(self):
+        self.print_cutline()
         # See english honorifics (https://en.wikipedia.org/wiki/English_honorifics) for reference.
         self.data['title'] = self.data['Name'].str.extract(r', (.*?)\.', expand=False)
-        self.print_value_counts('\nExtract title from name:', self.data['title'])
+        print('Extract title from name:')
+        print(self.value_counts('title'))
         self.data['title'].replace(['Mlle', 'Ms'], 'Miss', inplace=True)
         self.data['title'].replace(['Mme', 'Lady', 'Countess', 'Dona', 'the Countess'], 'Mrs', inplace=True)
         self.data['title'].replace(['Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer'], 'Mr', inplace=True)
@@ -168,19 +176,24 @@ class Titanic(Smurf):
 
     # Encode Sex
     def sex(self):
+        self.print_cutline()
         self.encode_cat('Sex')
 
     # Unite families
     def family(self):
+        self.print_cutline()
         self.data['family'] = self.data['SibSp'] + self.data['Parch'] + 1
-        self.print_value_counts('\nSibSp + Parch = family:', self.data['family'])
+        print('SibSp + Parch = family:')
+        print(self.value_counts('family'))
 
     # Check tickets
     def ticket(self):
+        self.print_cutline()
         self.encode_cat('Ticket')
 
     # Pay Fare (best score 0.8489)
     def fare(self):
+        self.print_cutline()
         self.features = ['Pclass', 'title', 'Sex', 'family', 'Ticket']
         #self.features = ['Pclass', 'title_cat', 'sex_cat']
         params = {'max_depth': [2, 3, 4],
@@ -190,6 +203,7 @@ class Titanic(Smurf):
 
     # Encode and fix Embarked (best score 0.9479)
     def embarked(self):
+        self.print_cutline()
         self.encode_cat('Embarked')
         params = {'max_depth': [3, 4, 5],
                   'learning_rate': [0.4, 0.5, 0.6],
@@ -199,6 +213,7 @@ class Titanic(Smurf):
 
     # Fix Age (best score 0.4230)
     def age(self):
+        self.print_cutline()
         self.features = np.append(self.features, 'Embarked')
         params = {'max_depth': [2, 3],
                   'learning_rate': [0.04, 0.05, 0.08],
@@ -207,6 +222,7 @@ class Titanic(Smurf):
 
     # Final glance at data
     def survived(self):
+        self.print_cutline()
         # Finally predict Survived (best score 0.8350)
         features = np.append(self.features, 'Age')
         params = {'max_depth': [3, 4, 5],
