@@ -70,9 +70,11 @@ class Smurf:
 
         model = None
         if self.use_xgb:
-            model = self._infer_xgb(params, xt, xv, yt, yv)
+            model = self._infer_xgb(params, xt, yt, features)
         else:
-            model = self._infer_linear(xt, xv, yt, yv)
+            model = self._infer_linear(xt, yt)
+
+        print('Score {:.4f}'.format(model.score(xv, yv)))
 
         # predict missing target values
         na = self.data[label].isna()
@@ -80,22 +82,21 @@ class Smurf:
         x_predict = predict.loc[:, features]
         self.data.loc[na, label] = model.predict(x_predict)
 
-    def _infer_linear(self, xt, xv, yt, yv):
+    def _infer_linear(self, x, y):
         model = linear_model.LinearRegression(normalize=True, n_jobs=self.n_jobs)
-        model.fit(xt, yt)
-        print('Score {:.4f}'.format(model.score(xv, yv)))
+        model.fit(x, y)
         return model
 
-    def _infer_xgb(self, params, xt, xv, yt, yv):
-        regressor = xgb.XGBRegressor(n_jobs=4)
-        grid = sl.model_selection.GridSearchCV(regressor, params, cv=5, iid=True).fit(xt, yt)
+    def _infer_xgb(self, params, x, y, features):
+        regressor = xgb.XGBRegressor(objective='reg:squarederror', n_jobs=4)
+        grid = sl.model_selection.GridSearchCV(regressor, params, cv=5, iid=True).fit(x, y)
         print('score', grid.best_score_)
         print('best params', grid.best_params_)
         model = grid.best_estimator_
         # show feature importance
-        #feature_importance = pd.DataFrame({'feature': features, 'importance': model.feature_importances_})
-        #print('Feature importance:')
-        #print(feature_importance.sort_values(by='importance', ascending=False))
+        feature_importance = pd.DataFrame({'feature': features, 'importance': model.feature_importances_})
+        print('Feature importance:')
+        print(feature_importance.sort_values(by='importance', ascending=False))
         return model
 
     def infer_cat(self, params, features, label: str):

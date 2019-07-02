@@ -40,10 +40,10 @@ class Titanic(Smurf):
     # Pay Fare (best score 0.8489)
     def fare(self):
         self.print_cutline()
-        self.features = ['Pclass', 'Title', 'Sex', 'Family', 'Ticket']
-        params = {'max_depth': [2, 3, 4],
+        self.features = ['Pclass', 'Family', 'Ticket'] # less and less important: Title, Sex
+        params = {'max_depth': [2, 3],
                   'learning_rate': [0.3, 0.4, 0.5],
-                  'n_estimators': [150, 170, 190]}
+                  'n_estimators': [140, 150, 160]}
         self.infer(params, self.features, 'Fare')
         self.features = np.append(self.features, 'Fare')
 
@@ -81,12 +81,12 @@ class Titanic(Smurf):
 
 
 if __name__ == '__main__':
-    titanic = Titanic(use_xgb=False, n_jobs=4)
+    titanic = Titanic(use_xgb=True, n_jobs=4)
     titanic.title()
     titanic.sex()
     titanic.family()
     titanic.ticket()
     titanic.fare()
-    titanic.embarked()
-    titanic.age()
-    titanic.survived()
+    # titanic.embarked()
+    # titanic.age()
+    # titanic.survived()
