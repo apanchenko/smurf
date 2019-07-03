@@ -89,7 +89,7 @@ class Smurf:
 
     def _infer_xgb(self, params, x, y, features):
         regressor = xgb.XGBRegressor(objective='reg:squarederror', n_jobs=4)
-        grid = sl.model_selection.GridSearchCV(regressor, params, cv=5, iid=True).fit(x, y)
+        grid = sl.model_selection.GridSearchCV(regressor, params, cv=10, iid=True).fit(x, y)
         print('score', grid.best_score_)
         print('best params', grid.best_params_)
         model = grid.best_estimator_
