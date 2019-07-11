@@ -21,3 +21,11 @@
 5. Or freeze current packages
 
       ```pip freeze > requirements.txt```
+
+6. List outdated packages
+
+      ```pip list -o```
+
+7. Upgrade package
+
+      ```pip install -U package_name```
