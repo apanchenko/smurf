@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 
 class Titanic(Smurf):
-    def __init__(self, use_xgb, n_jobs):
+    def __init__(self, n_jobs):
         self.train = pd.read_csv('../input/train.csv')
         self.test = pd.read_csv('../input/test.csv')
-        Smurf.__init__(self, use_xgb, n_jobs, self.train, self.test)
+        Smurf.__init__(self, n_jobs, self.train, self.test)
 
     # Extract Title from Name
     def title(self):
@@ -40,22 +40,24 @@ class Titanic(Smurf):
     # Pay Fare (best score 0.8489)
     def fare(self):
         self.print_cutline()
-        self.features = ['Pclass', 'Family', 'Ticket'] # less and less important: Title, Sex
-        params = {'max_depth': [2, 3],
-                  'learning_rate': [0.3, 0.4, 0.5],
-                  'n_estimators': [140, 150, 160]}
-        self.infer(params, self.features, 'Fare')
-        self.features = np.append(self.features, 'Fare')
+        features = ['Pclass', 'Family', 'Ticket'] # less and less important: Title, Sex
+        # params = {'max_depth': [2, 3],
+        #           'learning_rate': [0.3, 0.4, 0.5],
+        #           'n_estimators': [140, 150, 160]}
+        params = {'max_depth': [2],
+                  'learning_rate': [0.4],
+                  'n_estimators': [160]}
+        self.infer(params, features, 'Fare')
 
     # Encode and fix Embarked (best score 0.9479)
     def embarked(self):
         self.print_cutline()
         self.encode_cat('Embarked')
         params = {'max_depth': [3, 4, 5],
-                  'learning_rate': [0.4, 0.5, 0.6],
-                  'n_estimators': [400, 500, 600]}
-        self.infer_cat(params, self.features, 'Embarked')
-        self.features = np.append(self.features, 'Embarked')
+                  'learning_rate': [0.4, 0.5],
+                  'n_estimators': [300, 400, 500]}
+        features = ['Pclass', 'Ticket', 'Family', 'Fare', 'Title', 'Sex'] # less and less important: 
+        self.infer_cat(params, features, 'Embarked')
 
     # Fix Age (best score 0.4230)
     def age(self):
@@ -63,8 +65,8 @@ class Titanic(Smurf):
         params = {'max_depth': [2, 3],
                   'learning_rate': [0.04, 0.05, 0.08],
                   'n_estimators': [90, 100, 120]}
-        self.infer(params, self.features, 'Age')
-        self.features = np.append(self.features, 'Age')
+        features = ['Pclass', 'Ticket', 'Family', 'Fare', 'Title', 'Sex', 'Embarked'] # less and less important: 
+        self.infer(params, features, 'Age')
 
     # Final glance at data
     def survived(self):
@@ -73,7 +75,8 @@ class Titanic(Smurf):
         params = {'max_depth': [3, 4, 5],
                   'learning_rate': [0.1, 0.3],
                   'n_estimators': [70, 100, 300]}
-        self.infer_cat(params, self.features, 'Survived')
+        features = ['Pclass', 'Ticket', 'Family', 'Fare', 'Title', 'Sex', 'Embarked', 'Age'] # less and less important: 
+        self.infer_cat(params, features, 'Survived')
         # create submission
         na = self.data['Survived'].isna()
         sub = pd.DataFrame({'PassengerId': self.test['PassengerId'], 'Survived': self.data[na].loc[:, 'Survived']})
@@ -81,12 +84,12 @@ class Titanic(Smurf):
 
 
 if __name__ == '__main__':
-    titanic = Titanic(use_xgb=True, n_jobs=4)
+    titanic = Titanic(n_jobs=4)
     titanic.title()
     titanic.sex()
     titanic.family()
     titanic.ticket()
     titanic.fare()
-    # titanic.embarked()
-    # titanic.age()
-    # titanic.survived()
+    titanic.embarked()
+    titanic.age()
+    titanic.survived()

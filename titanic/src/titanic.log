@@ -5,12 +5,12 @@ sklearn 0.21.1
 xgboost 0.90
 ================================================================================
 Meet data:
-     PassengerId  Survived  Pclass  ...     Fare Cabin  Embarked
-521          522       0.0       3  ...   7.8958   NaN         S
-774          775       1.0       2  ...  23.0000   NaN         S
-271          272       1.0       3  ...   0.0000   NaN         S
-352         1244       NaN       2  ...  73.5000   NaN         S
-240          241       0.0       3  ...  14.4542   NaN         C
+     PassengerId  Survived  Pclass  ...      Fare Cabin  Embarked
+29            30       0.0       3  ...    7.8958   NaN         S
+548          549       0.0       3  ...   20.5250   NaN         S
+88           980       NaN       3  ...    7.7500   NaN         Q
+412          413       1.0       1  ...   90.0000   C78         Q
+74           966       NaN       1  ...  211.5000  C130         C
 
 [5 rows x 12 columns]
 
@@ -25,8 +25,8 @@ nans             0      0       0       0  ...        2      263      418    101
 
 --------------------------------------------------------------------------------
 Extract Title from Name:
-               Mr  Miss  Mrs  Master  Dr  Rev  ...  Capt  Dona  Lady  Don  Sir  nan
-Title object  757   260  197      61   8    8  ...     1     1     1    1    1    0
+               Mr  Miss  Mrs  Master  Rev  ...  Mme  Lady  Don  the Countess  nan
+Title object  757   260  197      61    8  ...    1     1    1             1    0
 
 [1 rows x 19 columns] 
 
@@ -57,7 +57,14 @@ Ticket int32   11    8    8    7    7    7  ...    1    1    1    1    1    0
 
 --------------------------------------------------------------------------------
 Infer  Fare
-Score 0.3370
+score 0.7854823838274335
+best params {'learning_rate': 0.4, 'max_depth': 2, 'n_estimators': 160}
+Feature importance:
+  feature  importance
+0  Pclass    0.797082
+1  Family    0.118058
+2  Ticket    0.084860
+Score 0.8704
 
 
 --------------------------------------------------------------------------------
@@ -65,18 +72,29 @@ Encode categorical 'Embarked':
                   2.0  0.0  1.0  nan
 Embarked float64  914  270  123    2
 Infer categorical Embarked
-Accuracy 0.6984732824427481
+score 0.9416267942583733
+params {'learning_rate': 0.4, 'max_depth': 5, 'n_estimators': 400}
                   2    0    1  nan
-Embarked int32  914  272  123    0
+Embarked int32  916  270  123    0
 
 
 --------------------------------------------------------------------------------
 Infer  Age
-Score 0.3573
+score 0.18093542975020077
+best params {'learning_rate': 0.04, 'max_depth': 2, 'n_estimators': 100}
+Feature importance:
+    feature  importance
+0    Pclass    0.564080
+1    Family    0.183489
+3      Fare    0.105715
+4  Embarked    0.073866
+2    Ticket    0.072850
+Score 0.2606
 
 
 --------------------------------------------------------------------------------
 Infer categorical Survived
-Accuracy 0.8324022346368715
+score 0.7120786516853933
+params {'learning_rate': 0.1, 'max_depth': 5, 'n_estimators': 70}
                   0    1  nan
-Survived int32  815  494    0
+Survived int32  829  480    0
