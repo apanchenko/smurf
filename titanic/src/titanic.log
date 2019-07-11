@@ -6,11 +6,11 @@ xgboost 0.90
 ================================================================================
 Meet data:
      PassengerId  Survived  Pclass  ...     Fare Cabin  Embarked
-326         1218       NaN       2  ...  39.0000    F4         S
-261         1153       NaN       3  ...   7.8542   NaN         S
-446          447       1.0       2  ...  19.5000   NaN         S
-26            27       0.0       3  ...   7.2250   NaN         C
-281          282       0.0       3  ...   7.8542   NaN         S
+484          485       1.0       1  ...  91.0792   B49         C
+511          512       0.0       3  ...   8.0500   NaN         S
+94            95       0.0       3  ...   7.2500   NaN         S
+125          126       1.0       3  ...  11.2417   NaN         C
+344         1236       NaN       3  ...  14.5000   NaN         S
 
 [5 rows x 12 columns]
 
@@ -25,7 +25,7 @@ nans             0      0       0       0  ...        2      263      418    101
 
 --------------------------------------------------------------------------------
 Extract Title from Name:
-               Mr  Miss  Mrs  Master  Rev  ...  Mme  Sir  the Countess  Dona  nan
+               Mr  Miss  Mrs  Master  Rev  ...  Mme  Sir  the Countess  Lady  nan
 Title object  757   260  197      61    8  ...    1    1             1     1    0
 
 [1 rows x 19 columns] 
@@ -72,16 +72,15 @@ Encode categorical 'Embarked':
                   2.0  0.0  1.0  nan
 Embarked float64  914  270  123    2
 Infer categorical Embarked
-Linear score 0.6985
-best params {'learning_rate': 0.5, 'max_depth': 3, 'n_estimators': 500}
+Linear score 0.7099
+best params {'learning_rate': 0.4, 'max_depth': 3, 'n_estimators': 300}
 Feature importance:
   feature  importance
-0  Pclass    0.545036
-2  Family    0.126344
-1  Ticket    0.119892
-3    Fare    0.110415
-4   Title    0.070975
-5     Sex    0.027337
+0  Pclass    0.484204
+1  Ticket    0.154701
+3    Fare    0.137034
+2  Family    0.127719
+4   Title    0.096342
 XGB score 0.9542
                   2    0    1  nan
 Embarked int32  916  270  123    0
