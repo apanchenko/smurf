@@ -1,12 +1,12 @@
-from smurf import Smurf
+from regressor import Regressor
 import pandas as pd
 import numpy as np
 
-class Titanic(Smurf):
+class Titanic(Regressor):
     def __init__(self, n_jobs):
         self.train = pd.read_csv('../input/train.csv')
         self.test = pd.read_csv('../input/test.csv')
-        Smurf.__init__(self, n_jobs, self.train, self.test)
+        Regressor.__init__(self, n_jobs, self.train, self.test)
 
     # Extract Title from Name
     def title(self):
@@ -47,15 +47,16 @@ class Titanic(Smurf):
         params = {'max_depth': [2],
                   'learning_rate': [0.4],
                   'n_estimators': [160]}
+        #self.infer(params, features, 'Fare')
         self.infer(params, features, 'Fare')
 
     # Encode and fix Embarked (best score 0.9479)
     def embarked(self):
         self.print_cutline()
         self.encode_cat('Embarked')
-        params = {'max_depth': [3, 4, 5],
+        params = {'max_depth': [3, 4],
                   'learning_rate': [0.4, 0.5],
-                  'n_estimators': [300, 400, 500]}
+                  'n_estimators': [300, 400]}
         features = ['Pclass', 'Ticket', 'Family', 'Fare', 'Title'] # less and less important: , 'Sex'
         self.infer_cat(params, features, 'Embarked')
 

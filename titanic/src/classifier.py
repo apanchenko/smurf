@@ -8,6 +8,10 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
 import sys
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 print(' python', sys.version)
 
 print('  numpy', np.__version__)
@@ -19,7 +23,7 @@ print('sklearn', sl.__version__)
 print('xgboost', xgb.__version__)
 
 
-class Smurf:
+class Classifier:
     def __init__(self, n_jobs, train, test):
         print('===='*20)
         self.n_jobs = n_jobs
@@ -41,9 +45,6 @@ class Smurf:
             index=['dtypes', 'values', 'nans'])
         return stat.sort_values(by=['values'], axis=1, ascending=False)
 
-    def accuracy(self, y, yPred) -> float:
-        return np.sum(yPred == y) / len(y)
-
     def value_counts(self, label : str):
         feature = self.data[label]
         df = pd.DataFrame([feature.value_counts()], index=[feature.name + ' ' + str(feature.dtypes)])
@@ -58,46 +59,6 @@ class Smurf:
         self.data[label] = self.data[target]
         print('Encode categorical \'%s\':' % label)
         print(self.value_counts(label))
-
-    def infer(self, params, features: np.array, label: str):
-        print('Infer ', label)
-        # select training data
-        train = self.data[self.data[label].notna()]
-        x = train.loc[:, features]
-        y = train.loc[:, label]
-        xt, xv, yt, yv = train_test_split(x, y, test_size=0.2, random_state=40)
-
-        model = self._infer_linear(xt, yt)
-        score = model.score(xv, yv)
-        print('Linear score {:.4f}'.format(score))
-
-        xgb_model = self._infer_xgb(params, xt, yt, features)
-        xgb_score = xgb_model.score(xv, yv)
-        print('XGB score {:.4f}'.format(xgb_score))
-
-        if xgb_score > score:
-            model = xgb_model
-
-        # predict missing target values
-        na = self.data[label].isna()
-        predict = self.data[na]
-        x_predict = predict.loc[:, features]
-        self.data.loc[na, label] = model.predict(x_predict)
-
-    def _infer_linear(self, x, y):
-        model = linear_model.LinearRegression(normalize=True, n_jobs=self.n_jobs)
-        model.fit(x, y)
-        return model
-
-    def _infer_xgb(self, params, x, y, features):
-        regressor = xgb.XGBRegressor(objective='reg:squarederror', n_jobs=4)
-        grid = sl.model_selection.GridSearchCV(regressor, params, cv=10, iid=True).fit(x, y)
-        print('best params', grid.best_params_)
-        model = grid.best_estimator_
-        feature_importance = pd.DataFrame({'feature': features, 'importance': model.feature_importances_})
-        print('Feature importance:')
-        print(feature_importance.sort_values(by='importance', ascending=False))
-        return model
 
     def infer_cat(self, params, features, label: str):
         print('Infer categorical', label)
